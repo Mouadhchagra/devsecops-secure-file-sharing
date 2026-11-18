@@ -1,0 +1,49 @@
+# SecureShare - local infrastructure (Day 1)
+# Start:  docker compose up -d
+# Stop:   docker compose down
+# Secrets come from the .env file (never written here).
+
+services:
+  postgres:
+    image: postgres:16.6-alpine          # pinned version (supply-chain safety)
+    container_name: secureshare-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "127.0.0.1:5432:5432"            # only reachable from this PC, not the network
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    # MinIO no longer publishes images on Docker Hub; Chainguard ships a hardened,
+    # non-root build. Pinned by digest (= exact image fingerprint) because the free tier only has "latest".
+    image: chainguard/minio@sha256:7618b82bba99aadd77fcf59eb6cfd89b4b8b8e01ac796c474d57a1c1abf17e79
+    container_name: secureshare-minio
+    restart: unless-stopped
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "127.0.0.1:9000:9000"            # S3 API (used by the backend)
+      - "127.0.0.1:9001:9001"            # web console (for you, in the browser)
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      # image has no curl: open a TCP socket with bash and check for "200 OK"
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /minio/health/live HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && read -r l <&3 && [[ $$l == *200* ]]"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:
+  minio_data:
