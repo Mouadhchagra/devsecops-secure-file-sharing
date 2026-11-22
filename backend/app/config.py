@@ -5,7 +5,7 @@ Secrets are NEVER written in the code: they come from .env (git-ignored).
 
 from pathlib import Path
 
-from pydantic import SecretStr
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import URL
 
@@ -21,6 +21,12 @@ class Settings(BaseSettings):
     postgres_db: str
     postgres_host: str = "127.0.0.1"
     postgres_port: int = 5432
+
+    # ----- Authentication (Day 2) -----
+    # min_length=32: a short secret can be brute forced offline (hashcat -m 16500) -> attacker forges tokens
+    jwt_secret: SecretStr = Field(min_length=32)
+    jwt_expire_minutes: int = 15  # short life: a stolen token stops working quickly
+    refresh_expire_days: int = 7  # how long you stay logged in without typing the password
 
     @property
     def database_url(self) -> URL:

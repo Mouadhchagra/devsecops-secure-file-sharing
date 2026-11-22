@@ -9,3 +9,10 @@ alembic==1.20.1
 
 # Settings (reads .env)
 pydantic-settings==2.16.3
+
+# Authentication (Day 2)
+argon2-cffi==25.1.0       # password hashing (argon2id)
+pyjwt==2.15.1             # JWT create / verify
+slowapi==0.1.10           # rate limiting (anti brute force)
+limits==5.8.0             # counters used by slowapi; we also use it directly for the per-account lock
+email-validator==2.4.0    # real email validation in Pydantic

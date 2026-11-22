@@ -65,6 +65,22 @@ class ShareLink(Base):
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
 
+class RefreshToken(Base):
+    """Long-lived login (7 days). Only the SHA-256 of the token is stored, never the token itself."""
+
+    __tablename__ = "refresh_tokens"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)  # SHA-256 hex
+    expires_at: Mapped[datetime]
+    revoked_at: Mapped[datetime | None]  # set when used (rotation) or at logout
+    # Soft binding: the token only works from the same network + same browser it was created on
+    ip_network: Mapped[str | None] = mapped_column(String(64))  # e.g. "41.226.12.0/24", not the exact IP
+    user_agent: Mapped[str | None] = mapped_column(String(512))
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+
 class AuditLog(Base):
     """Append-only: the API will never update or delete rows here."""
 
